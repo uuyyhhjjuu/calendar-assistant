@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { createSlug } from "@/lib/auth";
@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ slug });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "创建失败" }, { status: 500 });
+    console.error("create calendar failed:", error);
+    const detail = error instanceof Error ? error.message : "unknown error";
+    return NextResponse.json({ error: "创建失败", detail }, { status: 500 });
   }
 }

@@ -1,7 +1,12 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+
+type ApiError = {
+  error?: string;
+  detail?: string;
+};
 
 export default function CreateCalendarPage() {
   const [passcode, setPasscode] = useState("");
@@ -22,17 +27,26 @@ export default function CreateCalendarPage() {
         body: JSON.stringify({ passcode, timezone }),
       });
 
-      const payload = await response.json();
-      if (!response.ok) {
-        setError(payload.error ?? "创建失败");
+      const payload = (await response.json()) as { slug?: string } & ApiError;
+      if (!response.ok || !payload.slug) {
+        const message = payload.detail ? `${payload.error ?? "创建失败"}: ${payload.detail}` : payload.error ?? "创建失败";
+        setError(message);
         return;
       }
 
-      await fetch("/api/calendar/unlock", {
+      const unlockResponse = await fetch("/api/calendar/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug: payload.slug, passcode }),
       });
+
+      if (!unlockResponse.ok) {
+        const unlockPayload = (await unlockResponse.json()) as ApiError;
+        const unlockError = unlockPayload.detail
+          ? `${unlockPayload.error ?? "自动解锁失败"}: ${unlockPayload.detail}`
+          : unlockPayload.error ?? "自动解锁失败";
+        setError(`创建成功，但${unlockError}。请在下一页手动输入口令。`);
+      }
 
       router.push(`/c/${payload.slug}`);
       router.refresh();
