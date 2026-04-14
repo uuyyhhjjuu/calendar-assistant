@@ -1,0 +1,663 @@
+﻿
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>个人日程助手</title>
+  <style>
+    :root {
+      --bg: #f5f6fb;
+      --panel: #ffffff;
+      --line: #e2e8f0;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --morning: #e3f2ff;
+      --afternoon: #fff6d8;
+      --evening: #f0e6ff;
+      --primary: #3f76ee;
+      --accent: #6a4ff2;
+      --good: #059669;
+      --warn: #b45309;
+      --danger: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #ffffff 0%, var(--bg) 45%);
+      color: var(--text);
+      font-family: "Kaiti SC", "STKaiti", "KaiTi", "楷体", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+
+    .shell { max-width: 1520px; margin: 0 auto; padding: 14px; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .title { font-size: 42px; font-weight: 800; letter-spacing: 0.02em; }
+    .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    button, input, textarea, select { font: inherit; }
+    button {
+      border: 1px solid #d1d9e7;
+      background: #fff;
+      border-radius: 11px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(15, 23, 42, 0.08); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary { border: none; color: #fff; background: linear-gradient(120deg, var(--primary), #2f64db); }
+    .btn-accent { border: none; color: #fff; background: linear-gradient(120deg, #7e58ff, var(--accent)); }
+    .status { font-weight: 700; color: var(--good); }
+
+    .tip {
+      margin: 12px 0;
+      border: 1px solid #f0e2a8;
+      background: #fff5cc;
+      color: #9a6700;
+      border-radius: 12px;
+      padding: 11px 14px;
+    }
+
+    .grid-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: auto; }
+    .grid { min-width: 1120px; display: grid; grid-template-columns: 118px repeat(7, minmax(148px, 1fr)); }
+    .corner, .day-h, .period-label, .cell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .corner { min-height: 88px; background: #f8fafc; }
+
+    .day-h { min-height: 88px; background: #fff; text-align: center; padding: 8px; }
+    .day-h .d { font-size: 30px; font-weight: 800; line-height: 1; }
+    .today-ring { outline: 2px solid #8bb4ff; outline-offset: -2px; border-radius: 8px; }
+
+    .note-link { border: none; background: none; color: #6d5efc; padding: 0; font-size: 13px; }
+    .note-t { font-size: 12px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .badge-row { margin-top: 4px; display: flex; justify-content: center; gap: 4px; flex-wrap: wrap; }
+    .badge {
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 11px;
+      line-height: 1.2;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .badge.holiday { color: #b91c1c; background: #fee2e2; border-color: #fecaca; }
+    .badge.workday { color: #92400e; background: #fef3c7; border-color: #fde68a; }
+
+    .period-label {
+      padding: 12px;
+      font-size: 31px;
+      font-weight: 800;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 10px;
+    }
+    .period-label small { display: block; font-size: 16px; color: #4b5563; font-weight: 500; }
+    .morning { background: var(--morning); }
+    .afternoon { background: var(--afternoon); }
+    .evening { background: var(--evening); }
+
+    .cell { min-height: 200px; padding: 8px; display: grid; align-content: start; gap: 8px; }
+    .card {
+      position: relative;
+      border-radius: 12px;
+      background: #fffffff0;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      padding: 7px 8px;
+      border-left: 3px solid #1e88e5;
+    }
+    .card.afternoon { border-left-color: #ef8e07; }
+    .card.evening { border-left-color: #7c3aed; }
+    .card.done { opacity: 0.55; }
+    .time-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .time { font-size: 12px; color: var(--muted); }
+    .mini-type {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+    }
+    .etitle { font-size: 15px; font-weight: 700; margin-top: 4px; line-height: 1.45; }
+    .actions {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      display: none;
+      gap: 4px;
+      background: #ffffffeb;
+      border: 1px solid #dbe3f0;
+      border-radius: 8px;
+      padding: 2px;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.09);
+    }
+    .card:hover .actions { display: flex; }
+    .actions button { font-size: 12px; padding: 4px 8px; }
+
+    .todo { margin-top: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .todo h2 { margin: 0 0 8px; }
+    .todo-row { display: flex; gap: 8px; }
+    .todo-row input { flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+    .list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+    .list li { display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; border-radius: 10px; padding: 9px; background: #fafafa; }
+    .list li.done span { text-decoration: line-through; color: var(--muted); }
+
+    .modal-bg { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: none; place-items: center; padding: 12px; }
+    .modal { width: min(500px, 95vw); background: #fff; border-radius: 13px; border: 1px solid #dbe2ec; padding: 14px; display: grid; gap: 8px; }
+    .modal input, .modal select, .modal textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+    .time2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .m-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    @media (max-width: 900px) {
+      .title { font-size: 32px; }
+      .period-label { font-size: 24px; }
+      .grid { min-width: 980px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="header">
+      <div>
+        <div class="title">个人日程助手</div>
+        <div class="row">
+          <button id="prevWeek">&lt; 上一周</button>
+          <span id="weekRange"></span>
+          <button id="nextWeek">下一周 &gt;</button>
+          <button id="todayBtn" class="btn-primary">今天</button>
+        </div>
+      </div>
+      <div class="row">
+        <select id="typeFilter">
+          <option value="all">全部类型</option>
+          <option value="work">工作</option>
+          <option value="personal">个人</option>
+          <option value="social">社交</option>
+        </select>
+        <span class="status" id="syncStatus">已同步</span>
+        <button id="syncBtn">同步</button>
+        <button id="exportBtn">导出</button>
+        <button id="importBtn" type="button">导入</button>
+        <input id="importInput" type="file" accept="application/json" style="display:none" />
+        <button id="quickBtn" class="btn-accent">记一笔</button>
+      </div>
+    </header>
+
+    <section class="grid-wrap"><div id="grid" class="grid"></div></section>
+
+    <section class="todo">
+      <h2>待办事项</h2>
+      <div class="todo-row">
+        <input id="todoInput" placeholder="添加待办..." />
+        <button id="addTodo">新增</button>
+      </div>
+      <ul id="todoList" class="list"></ul>
+    </section>
+  </main>
+
+  <div id="modalBg" class="modal-bg">
+    <form id="eventForm" class="modal">
+      <h3 id="modalTitle">新增日程</h3>
+      <label>日期<input required id="fDate" type="date" /></label>
+      <label>时段
+        <select id="fPeriod">
+          <option value="morning">上午</option>
+          <option value="afternoon">下午</option>
+          <option value="evening">晚上</option>
+        </select>
+      </label>
+      <label>类型
+        <select id="fType">
+          <option value="work">💼 工作</option>
+          <option value="personal">🏠 个人</option>
+          <option value="social">🥂 社交</option>
+        </select>
+      </label>
+      <label>标题<input required id="fTitle" type="text" /></label>
+      <div class="time2">
+        <label>开始<input id="fStart" type="time" /></label>
+        <label>结束<input id="fEnd" type="time" /></label>
+      </div>
+      <label>备注<textarea id="fDesc" rows="3"></textarea></label>
+      <div class="m-actions">
+        <button type="button" id="cancelBtn">取消</button>
+        <button class="btn-primary" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const PERIODS = ["morning", "afternoon", "evening"];
+    const PERIOD_LABEL = {
+      morning: ["上午", "08:00-12:00"],
+      afternoon: ["下午", "12:00-17:00"],
+      evening: ["晚上", "17:00-22:00"]
+    };
+    const WEEK_CN = ["一", "二", "三", "四", "五", "六", "日"];
+    const KEY = "calendar_assistant_lite_v2";
+
+    const TYPE_META = {
+      work: { icon: "💼", label: "工作" },
+      personal: { icon: "🏠", label: "个人" },
+      social: { icon: "🥂", label: "社交" }
+    };
+
+    // 国务院办公厅 2025-11-04 发布的 2026 年节假日安排
+    const HOLIDAY_2026 = {
+      "2026-01-01": { type: "holiday", label: "元旦" },
+      "2026-01-02": { type: "holiday", label: "元旦" },
+      "2026-01-03": { type: "holiday", label: "元旦" },
+      "2026-01-04": { type: "workday", label: "调休上班" },
+      "2026-02-14": { type: "workday", label: "调休上班" },
+      "2026-02-15": { type: "holiday", label: "春节" },
+      "2026-02-16": { type: "holiday", label: "春节" },
+      "2026-02-17": { type: "holiday", label: "春节" },
+      "2026-02-18": { type: "holiday", label: "春节" },
+      "2026-02-19": { type: "holiday", label: "春节" },
+      "2026-02-20": { type: "holiday", label: "春节" },
+      "2026-02-21": { type: "holiday", label: "春节" },
+      "2026-02-22": { type: "holiday", label: "春节" },
+      "2026-02-23": { type: "holiday", label: "春节" },
+      "2026-02-28": { type: "workday", label: "调休上班" },
+      "2026-04-04": { type: "holiday", label: "清明" },
+      "2026-04-05": { type: "holiday", label: "清明" },
+      "2026-04-06": { type: "holiday", label: "清明" },
+      "2026-05-01": { type: "holiday", label: "劳动节" },
+      "2026-05-02": { type: "holiday", label: "劳动节" },
+      "2026-05-03": { type: "holiday", label: "劳动节" },
+      "2026-05-04": { type: "holiday", label: "劳动节" },
+      "2026-05-05": { type: "holiday", label: "劳动节" },
+      "2026-05-09": { type: "workday", label: "调休上班" },
+      "2026-06-19": { type: "holiday", label: "端午" },
+      "2026-06-20": { type: "holiday", label: "端午" },
+      "2026-06-21": { type: "holiday", label: "端午" },
+      "2026-09-20": { type: "workday", label: "调休上班" },
+      "2026-09-25": { type: "holiday", label: "中秋" },
+      "2026-09-26": { type: "holiday", label: "中秋" },
+      "2026-09-27": { type: "holiday", label: "中秋" },
+      "2026-10-01": { type: "holiday", label: "国庆" },
+      "2026-10-02": { type: "holiday", label: "国庆" },
+      "2026-10-03": { type: "holiday", label: "国庆" },
+      "2026-10-04": { type: "holiday", label: "国庆" },
+      "2026-10-05": { type: "holiday", label: "国庆" },
+      "2026-10-06": { type: "holiday", label: "国庆" },
+      "2026-10-07": { type: "holiday", label: "国庆" },
+      "2026-10-10": { type: "workday", label: "调休上班" }
+    };
+
+    function toISO(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+    function fromISO(s) { return new Date(`${s}T00:00:00`); }
+    function addDays(s, n) { const d = fromISO(s); d.setDate(d.getDate() + n); return toISO(d); }
+    function weekStart(d) {
+      const x = new Date(d); const w = x.getDay(); const delta = w === 0 ? -6 : 1 - w;
+      x.setDate(x.getDate() + delta); x.setHours(0, 0, 0, 0); return toISO(x);
+    }
+    function fmt(s) {
+      const d = fromISO(s);
+      return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+    }
+    function uid() { return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`; }
+    function getSpecialDay(date) { return HOLIDAY_2026[date] || null; }
+    function toMinute(timeStr) {
+      if (!timeStr || typeof timeStr !== "string") return 9999;
+      const parts = timeStr.split(":");
+      if (parts.length !== 2) return 9999;
+      const h = Number(parts[0]);
+      const m = Number(parts[1]);
+      if (Number.isNaN(h) || Number.isNaN(m)) return 9999;
+      return h * 60 + m;
+    }
+
+    const storageAdapter = {
+      async loadAll() {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) {
+          return {
+            calendarMeta: { timezone: "Asia/Shanghai", weekStartDate: weekStart(new Date()) },
+            events: [],
+            dayNotes: [],
+            todos: []
+          };
+        }
+        try {
+          const data = JSON.parse(raw);
+          return {
+            calendarMeta: data.calendarMeta || { timezone: "Asia/Shanghai", weekStartDate: weekStart(new Date()) },
+            events: Array.isArray(data.events) ? data.events : [],
+            dayNotes: Array.isArray(data.dayNotes) ? data.dayNotes : [],
+            todos: Array.isArray(data.todos) ? data.todos : []
+          };
+        } catch {
+          return {
+            calendarMeta: { timezone: "Asia/Shanghai", weekStartDate: weekStart(new Date()) },
+            events: [], dayNotes: [], todos: []
+          };
+        }
+      },
+      async saveAll(data) { localStorage.setItem(KEY, JSON.stringify(data)); },
+      async loadWeek() { return this.loadAll(); },
+      async saveEvent(event) {
+        const d = await this.loadAll();
+        const i = d.events.findIndex((x) => x.id === event.id);
+        if (i >= 0) d.events[i] = event; else d.events.push(event);
+        await this.saveAll(d); return event;
+      },
+      async deleteEvent(id) {
+        const d = await this.loadAll();
+        d.events = d.events.filter((x) => x.id !== id);
+        await this.saveAll(d);
+      },
+      async saveDayNote(date, note) {
+        const d = await this.loadAll();
+        const i = d.dayNotes.findIndex((x) => x.date === date);
+        if (i >= 0) d.dayNotes[i].note = note; else d.dayNotes.push({ date, note });
+        await this.saveAll(d);
+      },
+      async saveTodo(todo) {
+        const d = await this.loadAll();
+        const i = d.todos.findIndex((x) => x.id === todo.id);
+        if (i >= 0) d.todos[i] = todo; else d.todos.push(todo);
+        await this.saveAll(d);
+      },
+      async deleteTodo(id) {
+        const d = await this.loadAll();
+        d.todos = d.todos.filter((x) => x.id !== id);
+        await this.saveAll(d);
+      },
+      async exportAll() { return this.loadAll(); },
+      async importAll(payload) { await this.saveAll(payload); }
+    };
+    const state = {
+      weekStart: weekStart(new Date()),
+      events: [],
+      dayNotes: [],
+      todos: [],
+      editing: null,
+      typeFilter: "all"
+    };
+
+    const el = {
+      grid: document.getElementById("grid"),
+      weekRange: document.getElementById("weekRange"),
+      sync: document.getElementById("syncStatus"),
+      modalBg: document.getElementById("modalBg"),
+      eventForm: document.getElementById("eventForm"),
+      modalTitle: document.getElementById("modalTitle"),
+      fDate: document.getElementById("fDate"),
+      fPeriod: document.getElementById("fPeriod"),
+      fType: document.getElementById("fType"),
+      fTitle: document.getElementById("fTitle"),
+      fStart: document.getElementById("fStart"),
+      fEnd: document.getElementById("fEnd"),
+      fDesc: document.getElementById("fDesc"),
+      todoInput: document.getElementById("todoInput"),
+      todoList: document.getElementById("todoList"),
+      importInput: document.getElementById("importInput"),
+      typeFilter: document.getElementById("typeFilter")
+    };
+
+    function setStatus(text, tone = "good") {
+      el.sync.textContent = text;
+      el.sync.style.color = tone === "good" ? "var(--good)" : tone === "warn" ? "var(--warn)" : "var(--danger)";
+    }
+
+    async function persist() {
+      try {
+        setStatus("待保存", "warn");
+        await storageAdapter.saveAll({
+          calendarMeta: { timezone: "Asia/Shanghai", weekStartDate: state.weekStart },
+          events: state.events,
+          dayNotes: state.dayNotes,
+          todos: state.todos
+        });
+        setStatus("已同步", "good");
+      } catch {
+        setStatus("保存失败", "danger");
+      }
+    }
+
+    function getWeekDates() { return Array.from({ length: 7 }, (_, i) => addDays(state.weekStart, i)); }
+    function getNote(date) { return state.dayNotes.find((n) => n.date === date)?.note || ""; }
+    function renderWeekRange() {
+      const w = getWeekDates();
+      el.weekRange.textContent = `${fmt(w[0])} - ${fmt(w[6])}`;
+    }
+
+    function openModal(draft) {
+      state.editing = draft.id || null;
+      el.modalTitle.textContent = draft.id ? "编辑日程" : "新增日程";
+      el.fDate.value = draft.date || getWeekDates()[0];
+      el.fPeriod.value = draft.period || "morning";
+      el.fType.value = draft.type || "work";
+      el.fTitle.value = draft.title || "";
+      el.fStart.value = draft.startTime || "";
+      el.fEnd.value = draft.endTime || "";
+      el.fDesc.value = draft.description || "";
+      el.modalBg.style.display = "grid";
+    }
+
+    function closeModal() {
+      el.modalBg.style.display = "none";
+      state.editing = null;
+      el.eventForm.reset();
+    }
+
+    function renderGrid() {
+      const weekDates = getWeekDates();
+      const today = toISO(new Date());
+      el.grid.innerHTML = "";
+
+      const corner = document.createElement("div");
+      corner.className = "corner";
+      el.grid.appendChild(corner);
+
+      weekDates.forEach((date, idx) => {
+        const special = getSpecialDay(date);
+        const h = document.createElement("div");
+        h.className = `day-h ${date === today ? "today-ring" : ""}`;
+
+        const specialBadge = special
+          ? `<div class="badge-row"><span class="badge ${special.type}">${special.label}${special.type === "workday" ? "" : "假"}</span></div>`
+          : "";
+
+        h.innerHTML = `<div>周${WEEK_CN[idx]}</div><div class="d">${fromISO(date).getDate()}</div>${specialBadge}<button class="note-link">+ 备注</button><div class="note-t">${getNote(date)}</div>`;
+        h.querySelector(".note-link").onclick = async () => {
+          const v = prompt("输入当天备注", getNote(date));
+          if (v === null) return;
+          const i = state.dayNotes.findIndex((n) => n.date === date);
+          if (i >= 0) state.dayNotes[i].note = v.trim(); else state.dayNotes.push({ date, note: v.trim() });
+          await persist();
+          renderGrid();
+        };
+        el.grid.appendChild(h);
+      });
+
+      PERIODS.forEach((period) => {
+        const l = document.createElement("div");
+        l.className = `period-label ${period}`;
+        l.innerHTML = `${PERIOD_LABEL[period][0]}<small>${PERIOD_LABEL[period][1]}</small>`;
+        el.grid.appendChild(l);
+
+        weekDates.forEach((date) => {
+          const c = document.createElement("div");
+          c.className = `cell ${period}`;
+          c.onclick = (e) => {
+            if (e.target.closest(".card")) return;
+            openModal({ date, period, type: "work", status: "active" });
+          };
+
+          state.events
+            .filter((x) => x.date === date && x.period === period)
+            .filter((x) => state.typeFilter === "all" ? true : x.type === state.typeFilter)
+            .sort((a, b) => toMinute(a.startTime) - toMinute(b.startTime))
+            .forEach((item) => {
+              const meta = TYPE_META[item.type] || TYPE_META.work;
+              const card = document.createElement("article");
+              card.className = `card ${period} ${item.status === "done" ? "done" : ""}`;
+              card.innerHTML = `<div class="time-line"><div class="time">${item.startTime || "--:--"}-${item.endTime || "--:--"}</div><div class="mini-type">${meta.icon} ${meta.label}</div></div><div class="etitle"></div><div class="actions"><button class="done-btn">${item.status === "done" ? "恢复" : "完成"}</button><button class="edit-btn">编辑</button><button class="del-btn">删除</button></div>`;
+              card.querySelector(".etitle").textContent = item.title;
+              card.querySelector(".done-btn").onclick = async (e) => {
+                e.stopPropagation();
+                item.status = item.status === "done" ? "active" : "done";
+                await persist();
+                renderGrid();
+              };
+              card.querySelector(".edit-btn").onclick = (e) => { e.stopPropagation(); openModal(item); };
+              card.querySelector(".del-btn").onclick = async (e) => {
+                e.stopPropagation();
+                state.events = state.events.filter((x) => x.id !== item.id);
+                await persist();
+                renderGrid();
+              };
+              c.appendChild(card);
+            });
+
+          el.grid.appendChild(c);
+        });
+      });
+
+      renderWeekRange();
+    }
+
+    function renderTodos() {
+      el.todoList.innerHTML = "";
+      state.todos.sort((a, b) => a.sortOrder - b.sortOrder).forEach((t, idx) => {
+        const li = document.createElement("li");
+        if (t.done) li.classList.add("done");
+        li.innerHTML = `<label><input type="checkbox" ${t.done ? "checked" : ""}><span></span></label><div><button ${idx === 0 ? "disabled" : ""}>上移</button> <button>删除</button></div>`;
+        li.querySelector("span").textContent = t.content;
+        li.querySelector("input").onchange = async (e) => {
+          t.done = e.target.checked;
+          await persist();
+          renderTodos();
+        };
+        li.querySelectorAll("button")[0].onclick = async () => {
+          if (idx === 0) return;
+          const prev = state.todos[idx - 1].sortOrder;
+          state.todos[idx - 1].sortOrder = t.sortOrder;
+          t.sortOrder = prev;
+          await persist();
+          renderTodos();
+        };
+        li.querySelectorAll("button")[1].onclick = async () => {
+          state.todos = state.todos.filter((x) => x.id !== t.id);
+          await persist();
+          renderTodos();
+        };
+        el.todoList.appendChild(li);
+      });
+    }
+
+    document.getElementById("prevWeek").onclick = () => { state.weekStart = addDays(state.weekStart, -7); renderGrid(); };
+    document.getElementById("nextWeek").onclick = () => { state.weekStart = addDays(state.weekStart, 7); renderGrid(); };
+    document.getElementById("todayBtn").onclick = () => { state.weekStart = weekStart(new Date()); renderGrid(); };
+
+    document.getElementById("syncBtn").onclick = async () => {
+      setStatus("同步中...", "warn");
+      const d = await storageAdapter.loadAll();
+      state.events = d.events || [];
+      state.dayNotes = d.dayNotes || [];
+      state.todos = d.todos || [];
+      setStatus("已同步", "good");
+      renderGrid();
+      renderTodos();
+    };
+
+    el.typeFilter.onchange = () => {
+      state.typeFilter = el.typeFilter.value;
+      renderGrid();
+    };
+
+    document.getElementById("quickBtn").onclick = () => openModal({ date: toISO(new Date()), period: "morning", type: "work", status: "active" });
+    document.getElementById("cancelBtn").onclick = closeModal;
+    el.modalBg.onclick = (e) => { if (e.target === el.modalBg) closeModal(); };
+
+    el.eventForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const event = {
+        id: state.editing || uid(),
+        date: el.fDate.value,
+        period: el.fPeriod.value,
+        type: el.fType.value,
+        title: el.fTitle.value.trim(),
+        startTime: el.fStart.value || "",
+        endTime: el.fEnd.value || "",
+        description: el.fDesc.value || "",
+        status: "active"
+      };
+      if (!event.title) { alert("标题必填"); return; }
+      const old = state.events.find((x) => x.id === event.id);
+      if (old) event.status = old.status;
+      const idx = state.events.findIndex((x) => x.id === event.id);
+      if (idx >= 0) state.events[idx] = event; else state.events.push(event);
+      await persist();
+      closeModal();
+      renderGrid();
+    };
+
+    document.getElementById("addTodo").onclick = async () => {
+      const content = el.todoInput.value.trim();
+      if (!content) return;
+      const max = state.todos.reduce((m, x) => Math.max(m, x.sortOrder), -1);
+      state.todos.push({ id: uid(), content, done: false, sortOrder: max + 1 });
+      el.todoInput.value = "";
+      await persist();
+      renderTodos();
+    };
+
+    document.getElementById("exportBtn").onclick = async () => {
+      const payload = await storageAdapter.exportAll();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `calendar-lite-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    document.getElementById("importBtn").onclick = () => el.importInput.click();
+    el.importInput.onchange = async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        if (!payload.events || !payload.dayNotes || !payload.todos) throw new Error("bad");
+        await storageAdapter.importAll(payload);
+        state.events = payload.events;
+        state.dayNotes = payload.dayNotes;
+        state.todos = payload.todos;
+        await persist();
+        renderGrid();
+        renderTodos();
+      } catch {
+        alert("导入失败：文件格式不正确");
+      }
+      e.target.value = "";
+    };
+
+    (async function init() {
+      const d = await storageAdapter.loadAll();
+      state.weekStart = d.calendarMeta?.weekStartDate || weekStart(new Date());
+      state.events = d.events || [];
+      state.dayNotes = d.dayNotes || [];
+      state.todos = d.todos || [];
+      renderGrid();
+      renderTodos();
+      setStatus("已同步", "good");
+    })();
+  </script>
+</body>
+</html>
