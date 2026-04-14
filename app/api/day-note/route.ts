@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { noteSchema } from "@/lib/validators";
 import { requireCalendarAccess } from "@/lib/server-auth";

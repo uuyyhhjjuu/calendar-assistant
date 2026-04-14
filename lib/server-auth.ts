@@ -1,4 +1,4 @@
-﻿import { cookies, headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { db } from "./db";
 import { getCookieConfig, verifySessionToken } from "./auth";
 

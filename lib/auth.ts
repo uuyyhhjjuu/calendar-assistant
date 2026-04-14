@@ -1,4 +1,4 @@
-﻿import { randomBytes } from "crypto";
+import { randomBytes } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 
 const COOKIE_NAME = "calendar_session";

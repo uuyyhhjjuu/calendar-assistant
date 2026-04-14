@@ -1,4 +1,4 @@
-﻿import { z } from "zod";
+import { z } from "zod";
 
 export const createCalendarSchema = z.object({
   passcode: z.string().min(6).max(100),

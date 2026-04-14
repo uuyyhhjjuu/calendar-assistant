@@ -1,4 +1,4 @@
-﻿const attempts = new Map<string, number[]>();
+const attempts = new Map<string, number[]>();
 const locks = new Map<string, number>();
 
 const MAX_ATTEMPTS = 7;

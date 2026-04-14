@@ -1,4 +1,4 @@
-﻿import { CalendarView } from "@/lib/calendar-view";
+import { CalendarView } from "@/lib/calendar-view";
 
 export default async function CalendarSlugPage({
   params,

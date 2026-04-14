@@ -1,4 +1,4 @@
-﻿export type Period = "morning" | "afternoon" | "evening";
+export type Period = "morning" | "afternoon" | "evening";
 export type EventType = "work" | "personal" | "social";
 
 export type EventItem = {

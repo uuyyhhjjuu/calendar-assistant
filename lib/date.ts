@@ -1,4 +1,4 @@
-﻿import type { Period } from "./types";
+import type { Period } from "./types";
 
 export function getWeekStart(value: Date): string {
   const current = new Date(value);

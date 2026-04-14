@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import { addDays, formatDate, getPeriodLabel, getWeekStart, toIsoDay } from "./date";

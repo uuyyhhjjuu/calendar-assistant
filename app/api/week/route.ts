@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { addDays } from "@/lib/date";
 import { db } from "@/lib/db";
 import { requireCalendarAccess } from "@/lib/server-auth";
