@@ -84,6 +84,10 @@ function toMinutes(timeValue?: string | null) {
   return h * 60 + m;
 }
 
+function normalizeIsoDate(value: string) {
+  return value.slice(0, 10);
+}
+
 export function CalendarView({ slug }: { slug: string }) {
   const todayIso = toIsoDay(new Date());
   const [passcode, setPasscode] = useState("");
@@ -108,8 +112,18 @@ export function CalendarView({ slug }: { slug: string }) {
       if (!mounted || !res.ok) return;
       const payload: WeekPayload = await res.json();
       if (!mounted) return;
-      setEvents(payload.events);
-      setNotes(payload.dayNotes);
+      setEvents(
+        payload.events.map((item) => ({
+          ...item,
+          date: normalizeIsoDate(item.date),
+        }))
+      );
+      setNotes(
+        payload.dayNotes.map((item) => ({
+          ...item,
+          date: normalizeIsoDate(item.date),
+        }))
+      );
       setTodos(payload.todos);
       setLocked(false);
       setNotice("已同步");
@@ -147,8 +161,18 @@ export function CalendarView({ slug }: { slug: string }) {
       return;
     }
     const payload: WeekPayload = await res.json();
-    setEvents(payload.events);
-    setNotes(payload.dayNotes);
+    setEvents(
+      payload.events.map((item) => ({
+        ...item,
+        date: normalizeIsoDate(item.date),
+      }))
+    );
+    setNotes(
+      payload.dayNotes.map((item) => ({
+        ...item,
+        date: normalizeIsoDate(item.date),
+      }))
+    );
     setTodos(payload.todos);
     setNotice("已同步");
   }
@@ -306,7 +330,7 @@ export function CalendarView({ slug }: { slug: string }) {
   function openEdit(item: EventItem) {
     setDraft({
       id: item.id,
-      date: item.date,
+      date: normalizeIsoDate(item.date),
       period: item.period,
       type: item.type ?? "work",
       title: item.title,
