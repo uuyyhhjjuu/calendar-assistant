@@ -22,6 +22,17 @@ export function toIsoDay(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function toIsoDayInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 export function formatDate(isoDay: string): string {
   const date = new Date(`${isoDay}T00:00:00`);
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;

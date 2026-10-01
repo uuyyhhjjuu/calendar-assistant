@@ -1,9 +1,12 @@
 import { randomBytes } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_MAX_AGE_SECONDS,
+  getSessionCookieOptions,
+} from "./session-cookie";
 
-const COOKIE_NAME = "calendar_session";
 const ISSUER = "calendar-assistant";
-const EXP_SECONDS = 60 * 60 * 24 * 7;
 
 function getSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -22,7 +25,7 @@ export async function signSessionToken(payload: { calendarId: string; slug: stri
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setIssuer(ISSUER)
-    .setExpirationTime(`${EXP_SECONDS}s`)
+    .setExpirationTime(`${SESSION_MAX_AGE_SECONDS}s`)
     .sign(getSecret());
 }
 
@@ -33,13 +36,7 @@ export async function verifySessionToken(token: string) {
 
 export function getCookieConfig() {
   return {
-    name: COOKIE_NAME,
-    options: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax" as const,
-      path: "/",
-      maxAge: EXP_SECONDS,
-    },
+    name: SESSION_COOKIE_NAME,
+    options: getSessionCookieOptions(process.env.NODE_ENV === "production"),
   };
 }

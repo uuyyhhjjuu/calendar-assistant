@@ -21,6 +21,43 @@
 - 导入 / 导出 JSON
 - 2026 法定节假日与调休上班标注
 
+## 升级版
+
+- 保留原有三时段周历、数据表、私密路径和口令，不需要重新创建日历。
+- 桌面显示整周，手机显示所选日期；底部加号可以快速录入。
+- 今日概览显示下一项安排、日程数量和待办进度。
+- 按当前周的标题/备注搜索，结合类型与“只看未完成”筛选。
+- 输入开始时间后自动选择时段；保存跨周日程后自动跳转到对应周。
+- 每 90 秒、回到页面时刷新云端数据，仍保留手动同步。
+- 网络失败时显示错误并保留录入表单，不当作成功保存。
+- 待办支持上下排序；导入前检查完整备份格式并确认覆盖。
+- 更多菜单提供导入、导出、同步和锁定日历。
+- 快捷键：`C` 新增、`T` 今天、`/` 搜索、左右方向键切周、`Esc` 关闭弹窗。
+- 字体使用设备自带楷体和中文无衬线字体，不下载远程字体，不添加分析服务。
+
+旧的单次 Vercel 部署地址不会随更新改变。日常使用项目固定生产域名，并保留原 `/c/{slug}` 路径。
+
+## 验证与无数据库预览
+
+开发运行继续使用 Node.js 20+；运行 TypeScript 单元测试需要 Node.js 24+。
+
+```powershell
+npm run test
+npm run typecheck
+npm run build
+```
+
+浏览器验收可使用独立的内存模拟接口，不会连接 Supabase：
+
+```powershell
+# 终端一
+npm run dev -- --hostname 127.0.0.1 --port 4329
+# 终端二
+node tests/preview-server.mjs
+```
+
+访问 `http://127.0.0.1:4330/c/test-calendar`，使用任意测试口令解锁。仅供本机开发，模拟数据不是真实备份，关闭模拟服务器后丢失。
+
 ## 本地开发
 
 1. 安装 Node.js 20+
@@ -44,6 +81,7 @@
 
 - `POST /api/calendar/create`
 - `POST /api/calendar/unlock`
+- `POST /api/calendar/lock`
 - `GET /api/week?slug=...&weekStart=YYYY-MM-DD`
 - `POST /api/event`
 - `PUT /api/event/:id`

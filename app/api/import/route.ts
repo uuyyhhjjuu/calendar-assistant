@@ -1,44 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
+import { importSchema } from "@/lib/backup-validation";
 import { db } from "@/lib/db";
 import { requireCalendarAccess } from "@/lib/server-auth";
-
-const importSchema = z.object({
-  slug: z.string().min(8),
-  payload: z.object({
-    events: z
-      .array(
-        z.object({
-          date: z.string(),
-          period: z.enum(["morning", "afternoon", "evening"]),
-          type: z.enum(["work", "personal", "social"]).optional(),
-          startTime: z.string().nullable().optional(),
-          endTime: z.string().nullable().optional(),
-          title: z.string(),
-          description: z.string().nullable().optional(),
-          status: z.enum(["active", "done", "cancelled"]).optional(),
-        })
-      )
-      .default([]),
-    dayNotes: z
-      .array(
-        z.object({
-          date: z.string(),
-          note: z.string(),
-        })
-      )
-      .default([]),
-    todos: z
-      .array(
-        z.object({
-          content: z.string(),
-          done: z.boolean().default(false),
-          sortOrder: z.number().int().nonnegative().optional(),
-        })
-      )
-      .default([]),
-  }),
-});
 
 export async function POST(request: NextRequest) {
   const raw = await request.json();
