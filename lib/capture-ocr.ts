@@ -55,11 +55,13 @@ export async function recognizeScreenshot(
       return value;
     });
     worker = await Promise.race([ready, aborted]);
-    await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO });
+    // A single-column block keeps screenshot labels and their values together.
+    await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK });
     const { data } = await Promise.race([worker.recognize(file), aborted]);
     const text = data.text.trim();
     if (!text) throw new Error("没有读到文字，请裁剪截图或直接粘贴日程信息。");
-    return text.slice(0, 8000);
+    if (text.length > 8000) throw new Error("截图文字过多，请裁剪后分批录入，避免漏掉后面的安排。");
+    return text;
   } finally {
     window.clearTimeout(timeout);
     signal.removeEventListener("abort", cancel);

@@ -20,7 +20,7 @@ import {
 } from "./calendar-domain";
 import { calendarRequest } from "./calendar-request";
 import { CaptureInput } from "./capture-input";
-import type { CapturedDraft } from "./capture-parser";
+import type { CapturedSchedule } from "./capture-parser";
 import { importSchema } from "./backup-validation";
 import { addDays, formatDate, getPeriodLabel, getWeekStart, toIsoDayInTimeZone } from "./date";
 import type { DayNote, EventItem, EventType, Period, TodoItem, WeekPayload } from "./types";
@@ -251,6 +251,8 @@ export function CalendarView({ slug }: { slug: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [captureWarnings, setCaptureWarnings] = useState<string[]>([]);
+  const [captureQueue, setCaptureQueue] = useState<CapturedSchedule[]>([]);
+  const [captureTotal, setCaptureTotal] = useState(0);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [draft, setDraft] = useState<DraftEvent>(EMPTY_DRAFT);
   const [noteDraft, setNoteDraft] = useState<DayNote>({ date: "", note: "" });
@@ -410,7 +412,8 @@ export function CalendarView({ slug }: { slug: string }) {
       const target = event.target as HTMLElement | null;
       const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
       if (event.key === "Escape") {
-        setModalOpen(false);
+        if (modalOpen && saving) return;
+        if (modalOpen && !closeEventModal()) return;
         setCaptureOpen(false);
         setNoteModalOpen(false);
         setInstallHelpOpen(false);
@@ -439,7 +442,7 @@ export function CalendarView({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [locked, modalOpen, captureOpen, noteModalOpen, installHelpOpen, todayIso, weekStart]);
+  }, [locked, modalOpen, saving, captureQueue.length, captureOpen, noteModalOpen, installHelpOpen, todayIso, weekStart]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -467,6 +470,7 @@ export function CalendarView({ slug }: { slug: string }) {
   }
 
   function openCreate(date: string, period: Period) {
+    setCaptureQueue([]);
     setCaptureWarnings([]);
     setDraft({ ...EMPTY_DRAFT, date, period, type: "work" });
     setFormError("");
@@ -477,15 +481,36 @@ export function CalendarView({ slug }: { slug: string }) {
     setCaptureOpen(true);
   }
 
-  function reviewCapture(captured: CapturedDraft, warnings: string[]) {
-    setDraft({ ...EMPTY_DRAFT, ...captured });
-    setCaptureWarnings(warnings);
+  function reviewCapture(schedules: CapturedSchedule[]) {
+    if (!schedules.length) return;
+    setCaptureQueue(schedules);
+    setCaptureTotal(schedules.length);
+    setDraft({ ...EMPTY_DRAFT, ...schedules[0].draft });
+    setCaptureWarnings(schedules[0].warnings);
     setFormError("");
     setCaptureOpen(false);
     setModalOpen(true);
   }
 
+  function advanceCapture() {
+    const remaining = captureQueue.slice(1);
+    setCaptureQueue(remaining);
+    setFormError("");
+    setCaptureWarnings(remaining[0]?.warnings ?? []);
+    setDraft(remaining.length ? { ...EMPTY_DRAFT, ...remaining[0].draft } : EMPTY_DRAFT);
+    setModalOpen(remaining.length > 0);
+  }
+
+  function closeEventModal() {
+    if (saving) return false;
+    if (captureQueue.length > 1 && !window.confirm(`还有 ${captureQueue.length} 条草稿未保存。结束本次录入吗？已经保存的日程会保留。`)) return false;
+    setCaptureQueue([]);
+    setModalOpen(false);
+    return true;
+  }
+
   function openEdit(item: EventItem) {
+    setCaptureQueue([]);
     setCaptureWarnings([]);
     setDraft({
       id: item.id,
@@ -517,6 +542,7 @@ export function CalendarView({ slug }: { slug: string }) {
 
   async function saveEvent(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving) return;
     const timeError = validateTimeRange(draft.startTime, draft.endTime);
     if (timeError) {
       setFormError(timeError);
@@ -539,8 +565,8 @@ export function CalendarView({ slug }: { slug: string }) {
         setSyncTone("error");
         return;
       }
-      setModalOpen(false);
-      setDraft(EMPTY_DRAFT);
+      if (captureQueue.length) advanceCapture();
+      else { setModalOpen(false); setDraft(EMPTY_DRAFT); }
       setNotice("日程已保存");
       setSyncTone("synced");
       const savedWeek = getWeekStart(new Date(`${draft.date}T00:00:00`));
@@ -1028,7 +1054,7 @@ export function CalendarView({ slug }: { slug: string }) {
       {captureOpen ? <CaptureInput
         referenceDay={todayIso}
         onClose={() => setCaptureOpen(false)}
-        onDraft={reviewCapture}
+        onDrafts={reviewCapture}
         onManual={() => { setCaptureOpen(false); openCreate(getQuickCreateDate(weekStart, todayIso), periodForNow()); }}
       /> : null}
 
@@ -1057,12 +1083,16 @@ export function CalendarView({ slug }: { slug: string }) {
       ) : null}
 
       {modalOpen ? (
-        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setModalOpen(false); }}>
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEventModal(); }}>
           <form className="modal event-modal" onSubmit={saveEvent} role="dialog" aria-modal="true" aria-labelledby="event-modal-title">
             <header className="modal-header">
               <div><p className="eyebrow">SCHEDULE</p><h3 id="event-modal-title">{draft.id ? "编辑日程" : "记一笔"}</h3></div>
-              <button type="button" className="modal-close" onClick={() => setModalOpen(false)} aria-label="关闭">×</button>
+              <button type="button" className="modal-close" disabled={saving} onClick={closeEventModal} aria-label="关闭">×</button>
             </header>
+            {captureTotal > 1 && captureQueue.length ? <div className="capture-queue-progress" role="status">
+              <strong>确认第 {captureTotal - captureQueue.length + 1} / {captureTotal} 条</strong>
+              <small>每条单独保存，已保存的不会重新提交。</small>
+            </div> : null}
             {captureWarnings.length ? <div className="capture-warnings" role="status">
               <strong>保存前请确认</strong>
               <ul>{captureWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
@@ -1121,10 +1151,11 @@ export function CalendarView({ slug }: { slug: string }) {
             </label>
             {formError ? <p className="form-error" role="alert">{formError}</p> : null}
             <footer className="modal-actions">
-              {draft.id ? <button type="button" className="delete-button" onClick={() => void deleteEvent({ ...draft, id: draft.id! })}>删除日程</button> : <span />}
+              {draft.id ? <button type="button" className="delete-button" onClick={() => void deleteEvent({ ...draft, id: draft.id! })}>删除日程</button>
+                : captureQueue.length ? <button type="button" disabled={saving} onClick={advanceCapture}>跳过这条</button> : <span />}
               <div>
-                <button type="button" onClick={() => setModalOpen(false)}>取消</button>
-                <button className="primary-btn" type="submit" disabled={saving}>{saving ? "保存中..." : "保存日程"}</button>
+                <button type="button" disabled={saving} onClick={closeEventModal}>取消</button>
+                <button className="primary-btn" type="submit" disabled={saving}>{saving ? "保存中..." : captureQueue.length > 1 ? "保存并确认下一条" : "保存日程"}</button>
               </div>
             </footer>
           </form>

@@ -18,6 +18,7 @@ const state = {
   ],
 };
 let unlocked = true;
+let failNextEvent = false;
 
 http.createServer(async (request, response) => {
   const url = new URL(request.url, "http://127.0.0.1:4330");
@@ -41,6 +42,7 @@ http.createServer(async (request, response) => {
     if (url.pathname === "/api/calendar/unlock") { unlocked = true; send({ ok: true }); return; }
     if (url.pathname === "/api/calendar/lock") { unlocked = false; send({ ok: true }); return; }
     if (!unlocked) { send({ error: "未解锁日历" }, 401); return; }
+    if (url.pathname === "/api/qa/fail-next-event") { failNextEvent = true; send({ ok: true }); return; }
     if (url.pathname === "/api/week") {
       const weekStart = url.searchParams.get("weekStart");
       const end = new Date(`${weekStart}T00:00:00Z`);
@@ -60,6 +62,9 @@ http.createServer(async (request, response) => {
       const key = match[1] === "event" ? "events" : "todos";
       const items = state[key];
       if (request.method === "POST") {
+        if (key === "events" && failNextEvent) {
+          failNextEvent = false; send({ error: "模拟保存失败，请重试" }, 503); return;
+        }
         const id = randomUUID();
         const { slug, ...values } = body;
         items.push({ ...values, id, ...(key === "todos" ? { done: false, sortOrder: Math.max(0, ...items.map((item) => item.sortOrder)) + 1 } : {}) });

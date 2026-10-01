@@ -1416,6 +1416,22 @@ textarea {
 .capture-warnings ul { margin: 6px 0 0; padding-left: 18px; }
 .capture-modal .capture-actions { display: flex; justify-content: space-between; gap: 8px; }
 .capture-tools button:disabled, .capture-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.capture-paste-hint { color: var(--subtle); font-size: 11px; line-height: 1.9; }
+.capture-dragging { outline: 3px dashed #608f80; outline-offset: -8px; }
+.capture-result-list { display: grid; gap: 10px; max-height: 350px; overflow-y: auto; margin-top: 10px; }
+.capture-result { padding: 12px; border: 1px solid #dde6e2; border-radius: 13px; background: #f7faf8; }
+.capture-result > label { display: flex; align-items: flex-start; gap: 9px; cursor: pointer; }
+.capture-result input[type="checkbox"] { width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0; }
+.capture-result label span { min-width: 0; }
+.capture-result strong { display: block; color: #354c43; font-size: 15px; overflow-wrap: anywhere; }
+.capture-result small { display: block; margin-top: 5px; font-size: 12px; font-weight: 400; }
+.capture-result-warning { color: #8b7238; font-size: 11px; line-height: 1.8; margin-top: 8px; }
+.capture-result details { color: var(--subtle); font-size: 11px; line-height: 1.8; margin-top: 8px; }
+.capture-result summary { cursor: pointer; }
+.capture-result details p { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 6px; }
+.capture-queue-progress { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: #edf5f1; color: #416b5f; font-size: 13px; }
+.capture-queue-progress small { font-size: 11px; }
+@media (max-width: 600px) { .event-modal .modal-actions { flex-wrap: wrap; } .event-modal .modal-actions > div { margin-left: auto; } }
 
 /* Modals */
 

@@ -129,3 +129,58 @@ export function validateCaptureImage(file: { type: string; size: number }): stri
   if (file.size === 0 || file.size > 8 * 1024 * 1024) return "图片需小于 8 MB，建议裁剪到包含日程的区域。";
   return null;
 }
+
+export type CapturedSchedule = { draft: CapturedDraft; warnings: string[]; source: string };
+
+export function parseScheduleBatch(input: string, referenceDay: string): { schedules: CapturedSchedule[]; warnings: string[] } {
+  const source = input.normalize("NFKC").replace(/\r/g, "")
+    .replace(/(?<=[\u3400-\u9fff])[ \t]+(?=[\u3400-\u9fff])/g, "")
+    .replace(/^\s*(?:\d{1,2}[)、]|\d{1,2}\.\s|[-•])\s*/gm, "");
+  if (!source.trim()) return { schedules: [], warnings: ["先输入日程信息。"] };
+  if (source.length > 8000) return { schedules: [], warnings: ["内容超过 8000 字，请分批录入。"] };
+  const datePattern = /\d{4}\s*[年/.-]\s*\d{1,2}\s*[月/.-]\s*\d{1,2}\s*[日号]?|\d{1,2}\s*(?:月|\/)\s*\d{1,2}\s*[日号]?|(?:上周|下周|本周|这周|本星期|下星期|星期|周)[一二三四五六日天]|大后天|后天|明天|明早|明晚|今天|今日|今晚|今早|今晨/g;
+  const timePattern = /(上午|早上|早晨|中午|下午|傍晚|晚上|晚间|凌晨)?\s*(\d{1,2}|[零〇一二两三四五六七八九十]{1,3})(?:[:：]\d{2}|[点时](?:半|一刻|三刻|(?:\d{1,2}|[零〇一二两三四五六七八九十]{1,3})分?)?)/g;
+  const topicPattern = /(?:^|\n)\s*(?:主题|事项|活动|标题|会议名称)\s*[:：]/g;
+  type Marker = { kind: "date" | "time" | "topic"; start: number; end: number };
+  const markers: Marker[] = [];
+  for (const [kind, pattern] of [["date", datePattern], ["time", timePattern], ["topic", topicPattern]] as const) {
+    for (const match of source.matchAll(pattern)) markers.push({ kind, start: match.index!, end: match.index! + match[0].length });
+  }
+  markers.sort((a, b) => a.start - b.start);
+  const boundaries = [0];
+  let hasDate = false, hasTime = false, hasTopic = false, lastTimeEnd = 0, lastDateEnd = 0;
+  // Only start a new item at a new appointment anchor, not at every OCR line.
+  for (const marker of markers) {
+    const between = source.slice(lastTimeEnd, marker.start);
+    const rangeEnd = marker.kind === "time" && hasTime && /^\s*[-~～—–至到]\s*$/.test(between);
+    const endLabel = marker.kind === "time" && hasTime && (/(?:结束|散会|结束时间)\s*[:：]?\s*$/.test(between) || /^\s*(?:结束|散会)/.test(source.slice(marker.end)));
+    const newItem = marker.kind === "topic" ? hasTopic || hasTime
+      : marker.kind === "date" ? (hasTime && (hasDate || !/(?:日期|时间)\s*[:：]?\s*$/.test(between)))
+        || (hasDate && !/^[\s,，、~～—–\-至到和或与/]*$/.test(source.slice(lastDateEnd, marker.start)))
+      : hasTime && !rangeEnd && !endLabel;
+    if (newItem && marker.start > boundaries[boundaries.length - 1]) {
+      boundaries.push(marker.start);
+      hasDate = false; hasTime = false; hasTopic = false;
+    }
+    if (marker.kind === "date") { hasDate = true; lastDateEnd = marker.end; }
+    if (marker.kind === "topic") hasTopic = true;
+    if (marker.kind === "time") { hasTime = true; lastTimeEnd = marker.end; }
+  }
+  if (boundaries.length > 20) return { schedules: [], warnings: ["识别到超过 20 条安排，请分批录入，避免遗漏。"] };
+  const schedules: CapturedSchedule[] = [];
+  for (let index = 0; index < boundaries.length; index++) {
+    const raw = source.slice(boundaries[index], boundaries[index + 1] ?? source.length)
+      .replace(/^[\s,，。;；]+|[\s,，。;；]+$/g, "");
+    if (!raw) continue;
+    const parsed = parseScheduleText(raw, referenceDay);
+    const previous = schedules[schedules.length - 1];
+    if (!parsed.draft.date && !datePattern.test(raw) && previous?.draft.date) {
+      parsed.draft.date = previous.draft.date;
+      parsed.warnings = parsed.warnings.filter((warning) => !warning.startsWith("没有明确日期"));
+      parsed.warnings.push("沿用上一条的日期，请确认这条也是同一天。");
+    }
+    datePattern.lastIndex = 0;
+    schedules.push({ ...parsed, source: raw });
+  }
+  return { schedules, warnings: schedules.length > 1 ? ["拆分是本地规则分析，请核对条数；若拆错可返回原文，用换行分开每条安排。"] : [] };
+}
