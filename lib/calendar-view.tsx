@@ -255,9 +255,11 @@ export function CalendarView({ slug }: { slug: string }) {
   const [query, setQuery] = useState("");
   const [activeOnly, setActiveOnly] = useState(false);
   const [formError, setFormError] = useState("");
+  const [installHelpOpen, setInstallHelpOpen] = useState(false);
   const [clockTime, setClockTime] = useState(currentClockTime);
   const searchRef = useRef<HTMLInputElement>(null);
   const readVersion = useRef(0);
+  const composeHandled = useRef(false);
   const manuallyLocked = useRef(false);
   const activeWeek = useRef(weekStart);
   activeWeek.current = weekStart;
@@ -376,6 +378,14 @@ export function CalendarView({ slug }: { slug: string }) {
   }, []);
 
   useEffect(() => {
+    if (locked || composeHandled.current) return;
+    composeHandled.current = true;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("compose") !== "1") return;
+    openQuickCreate();
+  }, [locked]);
+
+  useEffect(() => {
     if (locked) return;
     const refresh = () => {
       if (document.visibilityState === "visible") void pullWeek(weekStart, true);
@@ -397,10 +407,11 @@ export function CalendarView({ slug }: { slug: string }) {
       if (event.key === "Escape") {
         setModalOpen(false);
         setNoteModalOpen(false);
+        setInstallHelpOpen(false);
         setFormError("");
         return;
       }
-      if (locked || isTyping || modalOpen || noteModalOpen || event.ctrlKey || event.metaKey || event.altKey) {
+      if (locked || isTyping || modalOpen || noteModalOpen || installHelpOpen || event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
       if (event.key.toLowerCase() === "c") {
@@ -422,7 +433,7 @@ export function CalendarView({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [locked, modalOpen, noteModalOpen, todayIso, weekStart]);
+  }, [locked, modalOpen, noteModalOpen, installHelpOpen, todayIso, weekStart]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -768,6 +779,7 @@ export function CalendarView({ slug }: { slug: string }) {
           <details className="more-menu">
             <summary aria-label="更多操作">•••</summary>
             <div className="more-popover">
+              <button type="button" onClick={() => setInstallHelpOpen(true)}>添加到手机桌面</button>
               <button type="button" onClick={() => void pullWeek(weekStart)}>立即同步</button>
               <button type="button" onClick={() => void exportData()}>导出备份</button>
               <label className="import-action">
@@ -996,6 +1008,30 @@ export function CalendarView({ slug }: { slug: string }) {
       </section>
 
       <button type="button" className="mobile-fab" onClick={openQuickCreate} aria-label="新增日程">＋</button>
+
+      {installHelpOpen ? (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setInstallHelpOpen(false); }}>
+          <section className="modal install-help" role="dialog" aria-modal="true" aria-labelledby="install-help-title">
+            <header className="modal-header">
+              <div><p className="eyebrow">HOME SCREEN</p><h3 id="install-help-title">一键打开你的日程</h3></div>
+              <button type="button" className="modal-close" autoFocus onClick={() => setInstallHelpOpen(false)} aria-label="关闭桌面说明">×</button>
+            </header>
+            <h4>iPhone</h4>
+            <ol>
+              <li>用 Safari 打开当前这份日历。</li>
+              <li>点“分享”，选择“添加到主屏幕”。</li>
+              <li>若有“作为网页 App 打开”，保持开启，再点“添加”。</li>
+            </ol>
+            <p>以后点桌面图标就能进入。第一次打开可能需要重新输入原口令。</p>
+            <h4>安卓</h4>
+            <p>Chrome 右上角菜单 → “添加到主屏幕”或“安装应用”。</p>
+            <h4>只想快速记一笔？</h4>
+            <p>把下面的入口添加到主屏幕，名称设为“记一笔”。打开并解锁后直接显示录入窗口。</p>
+            <a className="primary-btn compose-shortcut" href={`/c/${slug}?compose=1`}>打开“记一笔”入口</a>
+            <p className="privacy-note">仍需要联网；桌面版不会绕过口令或改变目前的网络访问条件。不会离线缓存你的日程。</p>
+          </section>
+        </div>
+      ) : null}
 
       {modalOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setModalOpen(false); }}>

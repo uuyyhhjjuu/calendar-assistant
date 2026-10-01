@@ -329,6 +329,37 @@ textarea {
 
 /* Calendar frame */
 
+.modal.install-help {
+  display: block;
+}
+
+.install-help h4 {
+  margin-top: 18px;
+  color: var(--ink);
+}
+
+.install-help ol {
+  padding-left: 22px;
+  margin: 10px 0;
+}
+
+.install-help li + li {
+  margin-top: 7px;
+}
+
+.install-help p {
+  margin-top: 9px;
+  color: var(--muted);
+}
+
+.compose-shortcut {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 11px 16px;
+  text-align: center;
+  text-decoration: none;
+}
+
 .calendar-shell {
   width: min(1680px, 100%);
   margin: 0 auto;
