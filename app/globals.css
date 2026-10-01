@@ -1397,6 +1397,26 @@ textarea {
   font-size: 10px;
 }
 
+/* Quick capture */
+.capture-intro { color: var(--subtle); margin: -5px 0 0; font-size: 13px; }
+.capture-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.capture-tools button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; border: 1px solid #d6e2df; border-radius: 14px; background: #f0f7f5; color: #43635b; font-size: 15px; cursor: pointer; }
+.capture-tools button:last-of-type { background: #eef3fc; color: #526d9c; border-color: #dbe3f3; }
+.capture-tools svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.capture-tools button.is-listening { background: #fff0ed; border-color: #e8b3a9; color: #9a594b; }
+.capture-text-label { display: grid; gap: 9px; }
+.capture-text-label small { display: inline-block; margin-left: 6px; }
+.capture-modal textarea { font-size: 16px; line-height: 1.9; min-height: 158px; resize: vertical; }
+.capture-privacy { color: var(--subtle); font-size: 11px; line-height: 1.9; }
+.capture-progress { display: flex; justify-content: space-between; gap: 12px; color: #426f65; font-size: 12px; line-height: 1.8; }
+.capture-progress button { border: 0; background: none; color: #8c6252; cursor: pointer; text-decoration: underline; }
+.capture-consent, .capture-warnings { padding: 12px 14px; border: 1px solid #e5d9ab; border-radius: 12px; background: #fff9e6; font-size: 12px; line-height: 1.9; color: #776738; }
+.capture-consent > div { display: flex; justify-content: flex-end; gap: 9px; margin-top: 10px; }
+.capture-consent button { min-height: 40px; border-radius: 9px; padding: 8px 12px; }
+.capture-warnings ul { margin: 6px 0 0; padding-left: 18px; }
+.capture-modal .capture-actions { display: flex; justify-content: space-between; gap: 8px; }
+.capture-tools button:disabled, .capture-actions button:disabled { opacity: .55; cursor: not-allowed; }
+
 /* Modals */
 
 .modal-backdrop {

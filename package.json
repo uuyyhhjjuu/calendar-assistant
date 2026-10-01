@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/prepare-ocr.mjs && next dev",
+    "build": "node scripts/prepare-ocr.mjs && next build",
     "start": "next start",
     "test": "node --test --test-isolation=none tests/*.test.ts",
     "lint": "next lint",
@@ -18,9 +18,12 @@
     "pg": "^8.13.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "tesseract.js": "7.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@tesseract.js-data/chi_sim": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.10.2",
     "@types/pg": "^8.11.11",

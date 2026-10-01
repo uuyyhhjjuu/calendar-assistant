@@ -19,6 +19,8 @@ import {
   validateTimeRange,
 } from "./calendar-domain";
 import { calendarRequest } from "./calendar-request";
+import { CaptureInput } from "./capture-input";
+import type { CapturedDraft } from "./capture-parser";
 import { importSchema } from "./backup-validation";
 import { addDays, formatDate, getPeriodLabel, getWeekStart, toIsoDayInTimeZone } from "./date";
 import type { DayNote, EventItem, EventType, Period, TodoItem, WeekPayload } from "./types";
@@ -247,6 +249,8 @@ export function CalendarView({ slug }: { slug: string }) {
   const [syncTone, setSyncTone] = useState<SyncTone>("locked");
   const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureWarnings, setCaptureWarnings] = useState<string[]>([]);
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [draft, setDraft] = useState<DraftEvent>(EMPTY_DRAFT);
   const [noteDraft, setNoteDraft] = useState<DayNote>({ date: "", note: "" });
@@ -359,6 +363,7 @@ export function CalendarView({ slug }: { slug: string }) {
       if (result.response?.status === 401 || result.response?.status === 403) {
         setLocked(true);
         setModalOpen(false);
+        setCaptureOpen(false);
         setNoteModalOpen(false);
       }
       return null;
@@ -406,12 +411,13 @@ export function CalendarView({ slug }: { slug: string }) {
       const isTyping = target?.matches("input, textarea, select, [contenteditable='true']");
       if (event.key === "Escape") {
         setModalOpen(false);
+        setCaptureOpen(false);
         setNoteModalOpen(false);
         setInstallHelpOpen(false);
         setFormError("");
         return;
       }
-      if (locked || isTyping || modalOpen || noteModalOpen || installHelpOpen || event.ctrlKey || event.metaKey || event.altKey) {
+      if (locked || isTyping || modalOpen || captureOpen || noteModalOpen || installHelpOpen || event.ctrlKey || event.metaKey || event.altKey) {
         return;
       }
       if (event.key.toLowerCase() === "c") {
@@ -433,7 +439,7 @@ export function CalendarView({ slug }: { slug: string }) {
     }
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [locked, modalOpen, noteModalOpen, installHelpOpen, todayIso, weekStart]);
+  }, [locked, modalOpen, captureOpen, noteModalOpen, installHelpOpen, todayIso, weekStart]);
 
   async function unlock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -461,16 +467,26 @@ export function CalendarView({ slug }: { slug: string }) {
   }
 
   function openCreate(date: string, period: Period) {
+    setCaptureWarnings([]);
     setDraft({ ...EMPTY_DRAFT, date, period, type: "work" });
     setFormError("");
     setModalOpen(true);
   }
 
   function openQuickCreate() {
-    openCreate(getQuickCreateDate(weekStart, todayIso), periodForNow());
+    setCaptureOpen(true);
+  }
+
+  function reviewCapture(captured: CapturedDraft, warnings: string[]) {
+    setDraft({ ...EMPTY_DRAFT, ...captured });
+    setCaptureWarnings(warnings);
+    setFormError("");
+    setCaptureOpen(false);
+    setModalOpen(true);
   }
 
   function openEdit(item: EventItem) {
+    setCaptureWarnings([]);
     setDraft({
       id: item.id,
       date: normalizeIsoDate(item.date),
@@ -1009,6 +1025,13 @@ export function CalendarView({ slug }: { slug: string }) {
 
       <button type="button" className="mobile-fab" onClick={openQuickCreate} aria-label="新增日程">＋</button>
 
+      {captureOpen ? <CaptureInput
+        referenceDay={todayIso}
+        onClose={() => setCaptureOpen(false)}
+        onDraft={reviewCapture}
+        onManual={() => { setCaptureOpen(false); openCreate(getQuickCreateDate(weekStart, todayIso), periodForNow()); }}
+      /> : null}
+
       {installHelpOpen ? (
         <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setInstallHelpOpen(false); }}>
           <section className="modal install-help" role="dialog" aria-modal="true" aria-labelledby="install-help-title">
@@ -1040,6 +1063,10 @@ export function CalendarView({ slug }: { slug: string }) {
               <div><p className="eyebrow">SCHEDULE</p><h3 id="event-modal-title">{draft.id ? "编辑日程" : "记一笔"}</h3></div>
               <button type="button" className="modal-close" onClick={() => setModalOpen(false)} aria-label="关闭">×</button>
             </header>
+            {captureWarnings.length ? <div className="capture-warnings" role="status">
+              <strong>保存前请确认</strong>
+              <ul>{captureWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            </div> : null}
             <label className="title-field">
               <span>日程标题</span>
               <input type="text" required autoFocus maxLength={120} value={draft.title} onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} placeholder="例如：和产品团队开周会" />
